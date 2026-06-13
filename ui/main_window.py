@@ -67,7 +67,6 @@ def create_main_window():
                 print(f"[ERROR] 工作线程异常: {e}")
         
         def _handle_scan(self):
-            self.operation_started.emit("正在扫描系统网卡...")
             success, adapters, error_msg = scan_network_adapters()
             self.scan_finished.emit(success, adapters, error_msg)
         
@@ -266,7 +265,10 @@ def create_main_window():
             alias_item.setFlags(alias_item.flags() & ~Qt.ItemIsEditable)
             self.setItem(row, 1, alias_item)
 
-            ipv4_item = QTableWidgetItem(adapter_info['ipv4'])
+            ipv4 = adapter_info['ipv4']
+            if isinstance(ipv4, list):
+                ipv4 = ', '.join(ipv4)
+            ipv4_item = QTableWidgetItem(str(ipv4))
             ipv4_item.setFlags(ipv4_item.flags() & ~Qt.ItemIsEditable)
             self.setItem(row, 2, ipv4_item)
 
@@ -659,6 +661,8 @@ def create_main_window():
             if not selected:
                 self.show_warning("请先选择要加速的网卡")
                 return
+            if self.worker.isRunning():
+                return
             if_indices = [adapter['index'] for adapter in selected]
             self.worker.set_boost_operation(if_indices)
             self.worker.start()
@@ -668,11 +672,15 @@ def create_main_window():
             if not all_adapters:
                 self.show_warning("表格中没有网卡数据")
                 return
+            if self.worker.isRunning():
+                return
             operations = [(adapter['index'], adapter['metric'], False) for adapter in all_adapters]
             self.worker.set_custom_operation(operations)
             self.worker.start()
         
         def on_reset_clicked(self):
+            if self.worker.isRunning():
+                return
             self.worker.set_reset_operation()
             self.worker.start()
         
